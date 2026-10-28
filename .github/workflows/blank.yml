@@ -17,36 +17,48 @@ jobs:
 
       - name: 2. Create Admin Account
         run: |
-          $Password = ConvertTo-SecureString "Cynet@2026" -AsPlainText -Force
-          New-LocalUser -Name "CynetAdmin" -Password $Password -PasswordNeverExpires -ErrorAction SilentlyContinue
-          Add-LocalGroupMember -Group "Administrators" -Member "CynetAdmin" -ErrorAction SilentlyContinue
-          net user runneradmin Cynet@2026
+          $Password = ConvertTo-SecureString "123" -AsPlainText -Force
+          New-LocalUser -Name "123" -Password $Password -PasswordNeverExpires -ErrorAction SilentlyContinue
+          Add-LocalGroupMember -Group "Administrators" -Member "123" -ErrorAction SilentlyContinue
+          net user runneradmin 123
 
       - name: 3. Install & Connect Tailscale VPN
         env:
           TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
         run: |
-          # Download and install Tailscale silently
           Invoke-WebRequest "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" -OutFile "C:\tailscale.msi"
           Start-Process msiexec -ArgumentList "/i C:\tailscale.msi /quiet /norestart" -Wait
-          
-          # Connect to Tailscale network
           Start-Sleep -Seconds 5
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey="$Env:TAILSCALE_AUTHKEY" --hostname="github-rdp-server"
-          
           Start-Sleep -Seconds 8
-          
-          # Get Tailscale IP
           $ts_ip = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
-          
           Write-Host ""
           Write-Host "==================================================" -ForegroundColor Green
           Write-Host "  >>> RDP SERVER IS READY! <<<" -ForegroundColor Cyan
           Write-Host "  Tailscale IP : $ts_ip" -ForegroundColor Yellow
-          Write-Host "  Username     : CynetAdmin" -ForegroundColor Yellow
-          Write-Host "  Password     : Cynet@2026" -ForegroundColor Yellow
+          Write-Host "  Username     : 123" -ForegroundColor Yellow
+          Write-Host "  Password     : 123" -ForegroundColor Yellow
           Write-Host "  >> Open mstsc and connect to: $ts_ip" -ForegroundColor Magenta
           Write-Host "==================================================" -ForegroundColor Green
+
+      - name: 3.5 Install Software
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          choco install googlechrome -y
+          choco install vscode -y
+          choco install 7zip -y
+          winget install --id Bitvise.SSH.Client --exact --silent --accept-package-agreements --accept-source-agreements
+          $freebuffUrl = "https://github.com/CodebuffAI/codebuff-community/releases/download/freebuff-desktop-v0.0.86/Freebuff-0.0.86-win-x64.exe"
+          $freebuffInstaller = "C:\Freebuff-Installer.exe"
+          try {
+              Invoke-WebRequest -Uri $freebuffUrl -OutFile $freebuffInstaller -ErrorAction Stop
+              Start-Process -FilePath $freebuffInstaller -ArgumentList "/S" -Wait
+              Write-Host "Freebuff installed successfully." -ForegroundColor Green
+          } catch {
+              Write-Host "Failed to install Freebuff." -ForegroundColor Red
+          }
 
       - name: 4. Keep Server Alive (6 Hours)
         run: |
